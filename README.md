@@ -14,7 +14,7 @@ A CI pipeline that turns Sui Move smart contracts into full-stack DApps. You pre
 | **`PROJECT_DESCRIPTION.md`** | Yes | Short description of the DApp (style, features, UX). This is sent to the AI together with the generated bindings to produce the frontend. |
 | **`sui-codegen.config.ts`** | Yes | Tells codegen which Move package(s) to use and where to write output. Edit if you add or rename packages. |
 | **`ANTHROPIC_API_KEY`** (secret) | Yes | GitHub repo secret for the AI that generates the frontend. |
-| **`SUI_KEYSTORE_JSON`** (secret) | No | If set, CI publishes the Move package to testnet and injects the published package ID into the generated app. |
+| **`SUI_KEYSTORE_JSON`** (secret) + **`ENABLE_TESTNET_PUBLISH`** (variable) | No | To enable testnet publish: set repo variable **`ENABLE_TESTNET_PUBLISH`** to `true` and add secret **`SUI_KEYSTORE_JSON`** (keystore content). CI will then publish and inject the package ID into the app. |
 
 CI runs when you push changes to any of: `move/**`, `PROJECT_DESCRIPTION.md`, `sui-codegen.config.ts`, or `.github/workflows/**`. You can also trigger it manually (Actions → Run workflow).
 
@@ -24,7 +24,7 @@ CI runs when you push changes to any of: `move/**`, `PROJECT_DESCRIPTION.md`, `s
 
 1. **Checkout** and install Sui CLI (suiup) + Node.
 2. **(Optional) Publish to testnet**  
-   If `SUI_KEYSTORE_JSON` is set: publish the Move package, parse the published package ID from the CLI output, and expose it as `PACKAGE_ID` for later steps.
+   If repo variable **`ENABLE_TESTNET_PUBLISH`** is `true` and secret **`SUI_KEYSTORE_JSON`** is set: publish the Move package, parse the published package ID from the CLI output, and expose it as `PACKAGE_ID` for later steps.
 3. **Move summary**  
    `sui move summary` in the Move package directory (e.g. `move/hello_world/`).
 4. **Codegen (TypeScript bindings)**  
@@ -62,8 +62,9 @@ So: **prepare** Move + `PROJECT_DESCRIPTION.md` + config + secrets → **CI runs
 - **Optional (testnet auto-publish):** To have CI publish the Move package and inject the package ID into the generated dApp:
   1. Create a testnet-only wallet (e.g. `sui client new-address ed25519`) and fund it with testnet SUI.
   2. Copy the contents of `~/.sui/sui_config/sui.keystore` (the JSON array).
-  3. Add a repo secret **`SUI_KEYSTORE_JSON`** with that content.  
-  If not set, CI skips publish; the generated app will show a placeholder and you can set `PACKAGE_ADDRESS` manually after publishing.
+  3. Add a repo **secret** **`SUI_KEYSTORE_JSON`** with that content.
+  4. Add a repo **variable** **`ENABLE_TESTNET_PUBLISH`** with value **`true`** (Settings → Secrets and variables → Actions → Variables).  
+  If `ENABLE_TESTNET_PUBLISH` is not `true`, CI skips publish; the generated app will show a placeholder and you can set `PACKAGE_ADDRESS` manually after publishing.
 
 ---
 

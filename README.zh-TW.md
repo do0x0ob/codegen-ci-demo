@@ -14,7 +14,7 @@
 | **`PROJECT_DESCRIPTION.md`** | 是 | DApp 的簡短描述（風格、功能、使用方式）。會和產出的綁定一起送給 AI，用來產生前端。 |
 | **`sui-codegen.config.ts`** | 是 | 告訴 codegen 要處理哪些 Move 套件、輸出到哪裡。新增或改名套件時需對應修改。 |
 | **`ANTHROPIC_API_KEY`**（secret） | 是 | GitHub repo secret，供產生前端的 AI 使用。 |
-| **`SUI_KEYSTORE_JSON`**（secret） | 否 | 若設定，CI 會把 Move 套件發布到 testnet，並把發布後的 package ID 寫入產生的 app。 |
+| **`SUI_KEYSTORE_JSON`**（secret）＋ **`ENABLE_TESTNET_PUBLISH`**（variable） | 否 | 要啟用 testnet 發布：在 repo 新增 **variable** **`ENABLE_TESTNET_PUBLISH`** 設為 `true`，並新增 **secret** **`SUI_KEYSTORE_JSON`**（keystore 內容）。CI 會發布並把 package ID 寫入 app。 |
 
 當你 push 的變更涉及 `move/**`、`PROJECT_DESCRIPTION.md`、`sui-codegen.config.ts` 或 `.github/workflows/**` 時會觸發 CI；也可以到 Actions 手動「Run workflow」。
 
@@ -24,7 +24,7 @@
 
 1. **Checkout** 並安裝 Sui CLI（suiup）與 Node。
 2. **（選用）發布到 testnet**  
-   若已設定 `SUI_KEYSTORE_JSON`：發布 Move 套件，從 CLI 輸出解析 published package ID，並以 `PACKAGE_ID` 傳給後續步驟。
+   若 repo variable **`ENABLE_TESTNET_PUBLISH`** 為 `true` 且 secret **`SUI_KEYSTORE_JSON`** 已設定：發布 Move 套件，從 CLI 輸出解析 published package ID，並以 `PACKAGE_ID` 傳給後續步驟。
 3. **Move summary**  
    在 Move 套件目錄（例如 `move/hello_world/`）執行 `sui move summary`。
 4. **Codegen（TypeScript 綁定）**  
@@ -62,8 +62,9 @@
 - **選填（testnet 自動發布）：** 若希望 CI 發布 Move 套件並把 package ID 寫入產生的 dApp：
   1. 建立僅供 testnet 使用的錢包（例如 `sui client new-address ed25519`），並從 faucet 領 testnet SUI。
   2. 複製 `~/.sui/sui_config/sui.keystore` 的內容（JSON 陣列）。
-  3. 在 repo secrets 新增 **`SUI_KEYSTORE_JSON`** 並貼上該內容。  
-  未設定時 CI 不會發布；產生的 app 會使用佔位符，你可手動發布後再改 `PACKAGE_ADDRESS`。
+  3. 在 repo **Secrets** 新增 **`SUI_KEYSTORE_JSON`** 並貼上該內容。
+  4. 在 repo **Variables** 新增 **`ENABLE_TESTNET_PUBLISH`**，值設為 **`true`**（Settings → Secrets and variables → Actions → Variables）。  
+  若未將 `ENABLE_TESTNET_PUBLISH` 設為 `true`，CI 不會發布；產生的 app 會使用佔位符，你可手動發布後再改 `PACKAGE_ADDRESS`。
 
 ---
 

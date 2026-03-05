@@ -46,10 +46,10 @@ jobs:
           echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
           sui --version
 
-      # --- Publish Move 到 Testnet（選用：需設定 SUI_KEYSTORE_JSON secret）---
+      # --- Publish Move 到 Testnet（選用：設定 vars.ENABLE_TESTNET_PUBLISH = 'true' 且 secrets.SUI_KEYSTORE_JSON）---
       - name: Publish Move package (testnet)
         id: publish
-        if: ${{ secrets.SUI_KEYSTORE_JSON != '' }}
+        if: ${{ vars.ENABLE_TESTNET_PUBLISH == 'true' }}
         env:
           SUI_KEYSTORE_JSON: ${{ secrets.SUI_KEYSTORE_JSON }}
         run: |
@@ -69,10 +69,10 @@ jobs:
           echo "✅ Published package: $PACKAGE_ID"
 
       - name: Set placeholder PACKAGE_ID when skip publish
-        if: ${{ secrets.SUI_KEYSTORE_JSON == '' }}
+        if: ${{ vars.ENABLE_TESTNET_PUBLISH != 'true' }}
         run: |
           echo "PACKAGE_ID=" >> $GITHUB_ENV
-          echo "⚠️  SUI_KEYSTORE_JSON not set — skip publish, frontend will use placeholder"
+          echo "⚠️  Testnet publish disabled (set vars.ENABLE_TESTNET_PUBLISH to 'true' to enable)"
 
       # --- Node.js ---
       - uses: actions/setup-node@v4
