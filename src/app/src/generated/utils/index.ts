@@ -1,4 +1,3 @@
-
 import { bcs, BcsType, TypeTag, TypeTagSerializer } from '@mysten/sui/bcs';
 import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { TransactionArgument, isArgument } from '@mysten/sui/transactions';

@@ -1,248 +1,330 @@
-import { useState } from 'react'
-import { useCurrentAccount, useCurrentClient, useDAppKit, ConnectButton } from '@mysten/dapp-kit-react'
-import { useQuery } from '@tanstack/react-query'
-import { Transaction } from '@mysten/sui/transactions'
-import { init } from './generated/hello_world/greeting'
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ConnectButton, useCurrentAccount, useCurrentClient, useDAppKit } from '@mysten/dapp-kit-react';
+import { Transaction } from '@mysten/sui/transactions';
+import { init } from './generated/hello_world/greeting';
 
 // Replace with your actual package address
-const PACKAGE_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000'
+const PACKAGE_ADDRESS = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-const greetingModule = init(PACKAGE_ADDRESS)
+const greetingContract = init(PACKAGE_ADDRESS);
 
 interface GreetingObject {
-  id: string
-  message: string
-  owner: string
+  id: string;
+  message: string;
+  owner: string;
 }
 
 function App() {
-  const account = useCurrentAccount()
-  const client = useCurrentClient()
-  const dAppKit = useDAppKit()
-  
-  const [newMessage, setNewMessage] = useState('')
-  const [updateMessage, setUpdateMessage] = useState('')
-  const [selectedGreetingId, setSelectedGreetingId] = useState('')
-  const [loading, setLoading] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const account = useCurrentAccount();
+  const client = useCurrentClient();
+  const dAppKit = useDAppKit();
+  const [message, setMessage] = useState('');
+  const [updateMessage, setUpdateMessage] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Fetch user's greeting objects
-  const { data: greetings, refetch, isLoading } = useQuery({
+  const { data: greetings, isLoading, refetch } = useQuery({
     queryKey: ['greetings', account?.address],
     queryFn: async () => {
-      if (!account?.address) return []
+      if (!client || !account) return [];
       
-      try {
-        const response = await client.getOwnedObjects({
-          owner: account.address,
-          filter: {
-            StructType: `${PACKAGE_ADDRESS}::greeting::Greeting`
-          },
-          options: {
-            showContent: true,
-            showType: true
-          }
-        })
-
-        const greetings: GreetingObject[] = []
-        for (const item of response.data) {
-          if (item.data?.content && 'fields' in item.data.content) {
-            const fields = item.data.content.fields as any
-            greetings.push({
-              id: item.data.objectId,
-              message: fields.message,
-              owner: fields.owner
-            })
-          }
+      const objects = await client.getOwnedObjects({
+        owner: account.address,
+        filter: {
+          StructType: `${PACKAGE_ADDRESS}::greeting::Greeting`
+        },
+        options: {
+          showContent: true
         }
-        return greetings
-      } catch (err) {
-        console.error('Error fetching greetings:', err)
-        return []
-      }
+      });
+
+      return objects.data
+        .filter(obj => obj.data?.content?.dataType === 'moveObject')
+        .map(obj => {
+          const content = obj.data!.content as any;
+          return {
+            id: content.fields.id.id,
+            message: content.fields.message,
+            owner: content.fields.owner
+          } as GreetingObject;
+        });
     },
-    enabled: !!account?.address
-  })
+    enabled: !!account && !!client,
+    refetchInterval: 5000 // Refetch every 5 seconds
+  });
 
   const handleCreateGreeting = async () => {
-    if (!newMessage.trim()) return
+    if (!message.trim() || !account) return;
     
-    setLoading('create')
-    setError(null)
-    
+    setIsCreating(true);
     try {
-      const tx = new Transaction()
-      greetingModule.create_greeting({
-        arguments: [newMessage.trim()]
-      })(tx)
+      const tx = new Transaction();
+      greetingContract.create_greeting({
+        arguments: [message.trim()]
+      })(tx);
 
-      const result = await dAppKit.signAndExecuteTransaction({ transaction: tx })
-      
+      const result = await dAppKit.signAndExecuteTransaction({
+        transaction: tx
+      });
+
       if ('FailedTransaction' in result) {
-        throw new Error(result.FailedTransaction.error || 'Transaction failed')
+        throw new Error('Transaction failed');
       }
 
-      console.log('Greeting created:', result.Transaction.digest)
-      setNewMessage('')
-      refetch()
-    } catch (err) {
-      console.error('Error creating greeting:', err)
-      setError(err instanceof Error ? err.message : 'Failed to create greeting')
+      setMessage('');
+      refetch();
+      alert('Greeting created successfully!');
+    } catch (error) {
+      console.error('Error creating greeting:', error);
+      alert('Failed to create greeting. Please try again.');
     } finally {
-      setLoading(null)
+      setIsCreating(false);
     }
-  }
+  };
 
-  const handleUpdateGreeting = async () => {
-    if (!selectedGreetingId || !updateMessage.trim()) return
+  const handleUpdateGreeting = async (greetingId: string) => {
+    if (!updateMessage.trim() || !account) return;
     
-    setLoading('update')
-    setError(null)
-    
+    setIsUpdating(true);
     try {
-      const tx = new Transaction()
-      greetingModule.update_message({
-        arguments: [selectedGreetingId, updateMessage.trim()]
-      })(tx)
+      const tx = new Transaction();
+      greetingContract.update_message({
+        arguments: [greetingId, updateMessage.trim()]
+      })(tx);
 
-      const result = await dAppKit.signAndExecuteTransaction({ transaction: tx })
-      
+      const result = await dAppKit.signAndExecuteTransaction({
+        transaction: tx
+      });
+
       if ('FailedTransaction' in result) {
-        throw new Error(result.FailedTransaction.error || 'Transaction failed')
+        throw new Error('Transaction failed');
       }
 
-      console.log('Greeting updated:', result.Transaction.digest)
-      setUpdateMessage('')
-      setSelectedGreetingId('')
-      refetch()
-    } catch (err) {
-      console.error('Error updating greeting:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update greeting')
+      setUpdateMessage('');
+      refetch();
+      alert('Greeting updated successfully!');
+    } catch (error) {
+      console.error('Error updating greeting:', error);
+      alert('Failed to update greeting. Please try again.');
     } finally {
-      setLoading(null)
+      setIsUpdating(false);
     }
-  }
+  };
 
   return (
-    <div className="App">
-      <h1>Hello World DApp</h1>
-      <p>A minimal Sui DApp for creating and managing greeting messages on-chain</p>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#ffffff',
+      padding: '2rem',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      <div style={{
+        maxWidth: '600px',
+        margin: '0 auto'
+      }}>
+        {/* Header */}
+        <header style={{
+          textAlign: 'center',
+          marginBottom: '3rem'
+        }}>
+          <h1 style={{
+            fontSize: '2.5rem',
+            fontWeight: '700',
+            color: '#1a1a1a',
+            marginBottom: '0.5rem'
+          }}>
+            Hello World DApp
+          </h1>
+          <p style={{
+            fontSize: '1.1rem',
+            color: '#666',
+            marginBottom: '2rem'
+          }}>
+            Create and manage your on-chain greetings
+          </p>
+          <ConnectButton />
+        </header>
 
-      <div className="card">
-        <ConnectButton />
-      </div>
-
-      {account && (
-        <>
-          <div className="section">
-            <div className="card">
-              <h2>Create New Greeting</h2>
-              <div className="input-group">
-                <label htmlFor="newMessage">Your Greeting Message:</label>
+        {/* Main Content */}
+        {account ? (
+          <div>
+            {/* Create Greeting Section */}
+            <section style={{
+              backgroundColor: '#f8f9fa',
+              padding: '2rem',
+              borderRadius: '12px',
+              marginBottom: '2rem',
+              border: '1px solid #e9ecef'
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: '#1a1a1a',
+                marginBottom: '1rem'
+              }}>
+                Create New Greeting
+              </h2>
+              <div style={{ marginBottom: '1rem' }}>
                 <input
-                  id="newMessage"
                   type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
                   placeholder="Enter your greeting message..."
-                  disabled={loading === 'create'}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
                 />
               </div>
               <button
-                className="primary"
                 onClick={handleCreateGreeting}
-                disabled={!newMessage.trim() || loading === 'create'}
+                disabled={!message.trim() || isCreating}
+                style={{
+                  backgroundColor: message.trim() && !isCreating ? '#007bff' : '#6c757d',
+                  color: 'white',
+                  border: 'none',
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '1rem',
+                  borderRadius: '8px',
+                  cursor: message.trim() && !isCreating ? 'pointer' : 'not-allowed',
+                  fontWeight: '500'
+                }}
               >
-                {loading === 'create' ? 'Creating...' : 'Create Greeting'}
+                {isCreating ? 'Creating...' : 'Create Greeting'}
               </button>
-            </div>
-          </div>
+            </section>
 
-          <div className="section">
-            <div className="card">
-              <h2>Your Greetings</h2>
+            {/* Greetings List */}
+            <section>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: '600',
+                color: '#1a1a1a',
+                marginBottom: '1rem'
+              }}>
+                Your Greetings
+              </h2>
+
               {isLoading ? (
-                <p className="loading">Loading greetings...</p>
+                <div style={{
+                  textAlign: 'center',
+                  padding: '2rem',
+                  color: '#666'
+                }}>
+                  Loading greetings...
+                </div>
               ) : greetings && greetings.length > 0 ? (
-                <div className="greetings-list">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {greetings.map((greeting) => (
-                    <div key={greeting.id} className="greeting-item">
-                      <h3>Greeting #{greeting.id.slice(-8)}</h3>
-                      <div className="message">"{greeting.message}"</div>
-                      <div className="owner">Owner: {greeting.owner}</div>
-                      <div className="actions">
-                        <button
-                          onClick={() => {
-                            setSelectedGreetingId(greeting.id)
-                            setUpdateMessage(greeting.message)
+                    <div
+                      key={greeting.id}
+                      style={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e9ecef',
+                        borderRadius: '12px',
+                        padding: '1.5rem'
+                      }}
+                    >
+                      <div style={{ marginBottom: '1rem' }}>
+                        <h3 style={{
+                          fontSize: '1.2rem',
+                          fontWeight: '500',
+                          color: '#1a1a1a',
+                          marginBottom: '0.5rem'
+                        }}>
+                          {greeting.message}
+                        </h3>
+                        <p style={{
+                          fontSize: '0.9rem',
+                          color: '#666',
+                          margin: 0
+                        }}>
+                          ID: {greeting.id.slice(0, 20)}...
+                        </p>
+                      </div>
+                      
+                      <div style={{
+                        display: 'flex',
+                        gap: '0.5rem',
+                        alignItems: 'center'
+                      }}>
+                        <input
+                          type="text"
+                          value={updateMessage}
+                          onChange={(e) => setUpdateMessage(e.target.value)}
+                          placeholder="New message..."
+                          style={{
+                            flex: 1,
+                            padding: '0.5rem',
+                            fontSize: '0.9rem',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            outline: 'none'
                           }}
-                          disabled={!!loading}
+                        />
+                        <button
+                          onClick={() => handleUpdateGreeting(greeting.id)}
+                          disabled={!updateMessage.trim() || isUpdating}
+                          style={{
+                            backgroundColor: updateMessage.trim() && !isUpdating ? '#28a745' : '#6c757d',
+                            color: 'white',
+                            border: 'none',
+                            padding: '0.5rem 1rem',
+                            fontSize: '0.9rem',
+                            borderRadius: '6px',
+                            cursor: updateMessage.trim() && !isUpdating ? 'pointer' : 'not-allowed',
+                            fontWeight: '500'
+                          }}
                         >
-                          Update This Greeting
+                          {isUpdating ? 'Updating...' : 'Update'}
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p>No greetings found. Create your first greeting above!</p>
+                <div style={{
+                  textAlign: 'center',
+                  padding: '3rem',
+                  color: '#666',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '12px',
+                  border: '1px solid #e9ecef'
+                }}>
+                  <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
+                    No greetings found
+                  </p>
+                  <p style={{ fontSize: '0.9rem' }}>
+                    Create your first greeting above to get started!
+                  </p>
+                </div>
               )}
-            </div>
+            </section>
           </div>
-
-          {selectedGreetingId && (
-            <div className="section">
-              <div className="card">
-                <h2>Update Greeting</h2>
-                <p>Updating greeting: #{selectedGreetingId.slice(-8)}</p>
-                <div className="input-group">
-                  <label htmlFor="updateMessage">New Message:</label>
-                  <input
-                    id="updateMessage"
-                    type="text"
-                    value={updateMessage}
-                    onChange={(e) => setUpdateMessage(e.target.value)}
-                    placeholder="Enter new greeting message..."
-                    disabled={loading === 'update'}
-                  />
-                </div>
-                <div className="actions">
-                  <button
-                    className="success"
-                    onClick={handleUpdateGreeting}
-                    disabled={!updateMessage.trim() || loading === 'update'}
-                  >
-                    {loading === 'update' ? 'Updating...' : 'Update Greeting'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedGreetingId('')
-                      setUpdateMessage('')
-                    }}
-                    disabled={loading === 'update'}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="error">
-              <strong>Error:</strong> {error}
-            </div>
-          )}
-        </>
-      )}
-
-      {!account && (
-        <div className="card">
-          <p>Connect your wallet to start creating and managing greetings!</p>
-        </div>
-      )}
+        ) : (
+          <div style={{
+            textAlign: 'center',
+            padding: '3rem',
+            color: '#666'
+          }}>
+            <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>
+              Welcome to Hello World DApp
+            </p>
+            <p style={{ fontSize: '1rem' }}>
+              Please connect your wallet to create and manage your on-chain greetings.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
