@@ -3,6 +3,7 @@ name: Move Codegen → Frontend
 on:
   push:
     paths:
+      - '.github/workflows/**'
       - 'move/**'
       - 'PROJECT_DESCRIPTION.md'
       - 'sui-codegen.config.ts'
