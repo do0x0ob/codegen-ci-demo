@@ -56,26 +56,49 @@ ${description}
 ## Generated TypeScript Bindings
 ${bindingsContext}
 
-## Requirements
-- Use React 18 + Vite
-- Use @mysten/dapp-kit for wallet connection
-- Create a clean, minimal UI that lets users interact with ALL the contract functions
-- Include wallet connect button
-- Handle loading states and errors
-- Use TypeScript
-- Output files: App.tsx, main.tsx, index.html, vite.config.ts, package.json
-${packageId ? `- In App.tsx set the package address to this exact value: \`const PACKAGE_ADDRESS = '${packageId}';\` (the contract is already deployed to testnet).` : "- In App.tsx use a placeholder: `const PACKAGE_ADDRESS = '0x...';` and add a comment that the user must replace it with their deployed package ID."}
+## Sui Frontend (dApp Kit) — MUST follow exactly
 
-## Dependencies (use these exact versions in package.json — do not use outdated or non-existent versions)
-Use only versions that exist on npm. Prefer current stable:
-- "@mysten/sui": "^1.0.0" (do NOT use 0.54 or other invalid versions)
-- "@mysten/dapp-kit": "^0.14.0"
+Do NOT use the deprecated \`@mysten/dapp-kit\`. Use the new \`@mysten/dapp-kit-react\` with \`createDAppKit\` and \`SuiGrpcClient\`.
+
+1. **Create \`src/dapp-kit.ts\`** (or \`dapp-kit.ts\` next to App) with:
+   - \`import { createDAppKit } from '@mysten/dapp-kit-react';\`
+   - \`import { SuiGrpcClient } from '@mysten/sui/grpc';\`
+   - \`const GRPC_URLS = { testnet: 'https://fullnode.testnet.sui.io:443', mainnet: 'https://fullnode.mainnet.sui.io:443' };\`
+   - \`export const dAppKit = createDAppKit({ networks: ['testnet', 'mainnet'], defaultNetwork: 'testnet', createClient: (network) => new SuiGrpcClient({ network, baseUrl: GRPC_URLS[network] }) });\`
+   - Add: \`declare module '@mysten/dapp-kit-react' { interface Register { dAppKit: typeof dAppKit; } }\`
+
+2. **\`main.tsx\`** (or entry): Wrap app with \`QueryClientProvider\` and \`DAppKitProvider\`:
+   - \`import { QueryClient, QueryClientProvider } from '@tanstack/react-query';\`
+   - \`import { DAppKitProvider } from '@mysten/dapp-kit-react';\`
+   - \`import { dAppKit } from './dapp-kit';\` (or \`./src/dapp-kit\`)
+   - \`<QueryClientProvider client={new QueryClient()}><DAppKitProvider dAppKit={dAppKit}><App /></DAppKitProvider></QueryClientProvider>\`
+
+3. **In components**: Use \`useCurrentAccount()\`, \`useCurrentClient()\`, \`useDAppKit()\` from \`@mysten/dapp-kit-react\`.
+   - For signing + executing: \`const dAppKit = useDAppKit(); const result = await dAppKit.signAndExecuteTransaction({ transaction: tx });\`
+   - Check \`result.FailedTransaction\` for failure; success digest is \`result.Transaction.digest\`.
+   - Do NOT use \`useSignAndExecuteTransaction\`, \`useSuiClient\`, or \`SuiClientProvider\`/ \`WalletProvider\` (old API).
+   - For on-chain data: \`useCurrentClient()\` with \`useQuery\` from \`@tanstack/react-query\`, with \`enabled: !!account\` when the query needs a connected wallet.
+
+4. **Connect button**: \`import { ConnectButton } from '@mysten/dapp-kit-react';\` and render \`<ConnectButton />\`.
+
+5. **Package address**: In your app component or a config, set \`const PACKAGE_ADDRESS = '${packageId || '0x...'}';'\` (replace 0x... with the provided ID when present).
+
+## Requirements
+- Use React 18 + Vite, TypeScript
+- Use \`@mysten/dapp-kit-react\` and \`SuiGrpcClient\` only (no \`@mysten/dapp-kit\`, no \`SuiJsonRpcClient\`)
+- Create a clean, minimal UI that lets users interact with ALL the contract functions
+- Include \`<ConnectButton />\`, handle loading and errors
+- Output files: **src/dapp-kit.ts**, **src/App.tsx**, **src/main.tsx**, **index.html**, **vite.config.ts**, **package.json**
+
+## Dependencies (package.json — use these)
+- "@mysten/dapp-kit-react": "^1.0.0" (or latest stable)
+- "@mysten/sui": "^1.0.0"
 - "@tanstack/react-query": "^5.0.0"
 - "react": "^18.3.0", "react-dom": "^18.3.0"
 - "vite": "^6.0.0", "@vitejs/plugin-react": "^4.3.0"
 - "typescript": "^5.6.0"
-- "eslint": "^9.0.0" (avoid deprecated eslint@8)
-Include a complete package.json with scripts: "dev": "vite", "build": "tsc && vite build", "preview": "vite preview".
+- "eslint": "^9.0.0"
+Scripts: "dev": "vite", "build": "tsc && vite build", "preview": "vite preview".
 
 ## Output Format
 For each file, output:
