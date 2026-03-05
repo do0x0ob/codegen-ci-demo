@@ -66,6 +66,13 @@ jobs:
           npx sui-ts-codegen generate
           echo "✅ TypeScript bindings generated"
 
+      # --- 把 generated 複製到 app 內，讓前端 ./generated/... 路徑正確 ---
+      - name: Copy generated bindings into app
+        run: |
+          mkdir -p src/app/src/generated
+          cp -r src/generated/. src/app/src/generated/
+          echo "✅ Bindings copied to src/app/src/generated"
+
       # --- Step 3: AI Frontend Generation ---
       - name: Generate Frontend with AI
         env:
@@ -74,11 +81,13 @@ jobs:
           node scripts/generate-frontend.mjs
           echo "✅ Frontend generated"
 
-      # --- Step 4: Commit & Push ---
-      - name: Commit generated files
+      # --- Step 4: Commit & Push 到 codegen 分支（不覆蓋主幹）---
+      - name: Commit generated files to codegen branch
         run: |
           git config user.name "codegen-bot"
           git config user.email "bot@codegen.ci"
+          git checkout -B codegen
           git add src/
-          git diff --staged --quiet || (git commit -m "🤖 auto: codegen + frontend generation" && git push)
-          echo "✅ Changes committed"
+          git diff --staged --quiet || git commit -m "🤖 auto: codegen + frontend generation"
+          git push -f origin codegen
+          echo "✅ Pushed to branch codegen"
