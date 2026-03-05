@@ -24,8 +24,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ env.HOME }}/.local/bin
-            ${{ env.HOME }}/.local/share
+            /home/runner/.local/bin
+            /home/runner/.local/share
           key: suiup-${{ runner.os }}-sui-testnet-v1
           restore-keys: |
             suiup-${{ runner.os }}-sui-testnet-
