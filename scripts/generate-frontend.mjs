@@ -58,7 +58,18 @@ ${bindingsContext}
 - Include wallet connect button
 - Handle loading states and errors
 - Use TypeScript
-- Output files: App.tsx, main.tsx, index.html, vite.config.ts
+- Output files: App.tsx, main.tsx, index.html, vite.config.ts, package.json
+
+## Dependencies (use these exact versions in package.json — do not use outdated or non-existent versions)
+Use only versions that exist on npm. Prefer current stable:
+- "@mysten/sui": "^1.0.0" (do NOT use 0.54 or other invalid versions)
+- "@mysten/dapp-kit": "^0.14.0"
+- "@tanstack/react-query": "^5.0.0"
+- "react": "^18.3.0", "react-dom": "^18.3.0"
+- "vite": "^6.0.0", "@vitejs/plugin-react": "^4.3.0"
+- "typescript": "^5.6.0"
+- "eslint": "^9.0.0" (avoid deprecated eslint@8)
+Include a complete package.json with scripts: "dev": "vite", "build": "tsc && vite build", "preview": "vite preview".
 
 ## Output Format
 For each file, output:
