@@ -1,96 +1,120 @@
 # Codegen CI Demo
 
-**Push Move code → Auto-generate TypeScript SDK → Auto-generate Frontend → Done.**
+**Push Move code → Auto-generate TypeScript SDK → AI generates frontend from your description → Done.**
 
-## What This Does
+A CI pipeline that turns Sui Move smart contracts into full-stack DApps. You prepare the contract and a short description; the pipeline produces type-safe bindings and a React frontend.
 
-```
-Move Contract → sui move summary → @mysten/codegen → AI Frontend Generator → Deployed DApp
-```
+---
 
-A CI pipeline that turns Sui Move smart contracts into full-stack DApps automatically.
+## What to prepare (inputs)
 
-## How It Works
+| Input | Required | Description |
+|-------|----------|-------------|
+| **Move contract** | Yes | Your package under `move/` (e.g. `move/hello_world/`). CI runs `sui move summary` and codegen on it. |
+| **`PROJECT_DESCRIPTION.md`** | Yes | Short description of the DApp (style, features, UX). This is sent to the AI together with the generated bindings to produce the frontend. |
+| **`sui-codegen.config.ts`** | Yes | Tells codegen which Move package(s) to use and where to write output. Edit if you add or rename packages. |
+| **`ANTHROPIC_API_KEY`** (secret) | Yes | GitHub repo secret for the AI that generates the frontend. |
+| **`SUI_KEYSTORE_JSON`** (secret) | No | If set, CI publishes the Move package to testnet and injects the published package ID into the generated app. |
 
-1. **Write Move code** in `move/` directory
-2. **Push to GitHub** — CI triggers automatically
-3. **CI Pipeline:**
-   - Runs `sui move summary` to analyze your contract
-   - Runs `@mysten/codegen` to generate type-safe TypeScript bindings
-   - Feeds bindings + project description to AI → generates React frontend
-   - Pushes generated code to the `codegen` branch (main stays unchanged)
+CI runs when you push changes to any of: `move/**`, `PROJECT_DESCRIPTION.md`, `sui-codegen.config.ts`, or `.github/workflows/**`. You can also trigger it manually (Actions → Run workflow).
 
-## Files
+---
 
-| Path | Purpose |
-|------|---------|
-| `move/` | Your Move smart contracts |
-| `PROJECT_DESCRIPTION.md` | Describe your DApp (AI reads this) |
-| `sui-codegen.config.ts` | Codegen configuration |
-| `src/generated/` | Auto-generated TS bindings |
-| `src/app/` | Auto-generated frontend |
-| `.github/workflows/codegen.yml` | CI pipeline |
+## Generation pipeline (what CI does)
 
-## Usage
+1. **Checkout** and install Sui CLI (suiup) + Node.
+2. **(Optional) Publish to testnet**  
+   If `SUI_KEYSTORE_JSON` is set: publish the Move package, parse the published package ID from the CLI output, and expose it as `PACKAGE_ID` for later steps.
+3. **Move summary**  
+   `sui move summary` in the Move package directory (e.g. `move/hello_world/`).
+4. **Codegen (TypeScript bindings)**  
+   `sui-ts-codegen generate` → writes type-safe TS and BCS helpers to **`src/generated/`** (per `sui-codegen.config.ts`).
+5. **Copy bindings into app tree**  
+   Copies `src/generated/` into **`src/app/src/generated/`** so the frontend can import from `./generated/...`.
+6. **AI frontend generation**  
+   Runs `scripts/generate-frontend.mjs`, which:
+   - Reads **`src/generated/`** (all generated `.ts` bindings),
+   - Reads **`PROJECT_DESCRIPTION.md`**,
+   - Optionally receives **`PACKAGE_ID`** from the publish step,
+   - Sends all of the above to the LLM (Anthropic/OpenAI) to generate a React + Vite app that uses the bindings and matches the description,
+   - Writes the app under **`src/app/`** (e.g. `App.tsx`, `main.tsx`, `index.html`, `vite.config.ts`, `package.json`),
+   - If `PACKAGE_ID` is set, injects it into the generated app (e.g. `PACKAGE_ADDRESS` in `App.tsx`).
+7. **Push to `codegen` branch**  
+   Commits everything under `src/` and force-pushes to the **`codegen`** branch. The default branch (e.g. `master`) is not changed.
 
-1. Clone this repo
-2. Write your Move contract in `move/`
-3. Edit `PROJECT_DESCRIPTION.md` to describe what you want
-4. Push — CI does the rest
+---
+
+## Output (what you get)
+
+| Output | Location | Description |
+|--------|----------|-------------|
+| **TypeScript bindings** | `src/generated/` (and copied to `src/app/src/generated/`) | Type-safe Move call helpers and BCS types from your contract. |
+| **React frontend** | `src/app/` | AI-generated app: `src/App.tsx`, `src/main.tsx`, `index.html`, `vite.config.ts`, `package.json`, etc. Uses the bindings and, if publish ran, the injected package ID. |
+| **Branch** | **`codegen`** | All of the above is committed and pushed only to the `codegen` branch. Check out or pull `codegen` to use the generated app. |
+
+So: **prepare** Move + `PROJECT_DESCRIPTION.md` + config + secrets → **CI runs** the pipeline above → **result** is on the **`codegen`** branch in **`src/generated/`** and **`src/app/`**.
+
+---
 
 ## Setup
 
-Add `ANTHROPIC_API_KEY` to your GitHub repo secrets.
+- **Required:** Add **`ANTHROPIC_API_KEY`** to your GitHub repo secrets (used by `generate-frontend.mjs` for the AI).
+- **Optional (testnet auto-publish):** To have CI publish the Move package and inject the package ID into the generated dApp:
+  1. Create a testnet-only wallet (e.g. `sui client new-address ed25519`) and fund it with testnet SUI.
+  2. Copy the contents of `~/.sui/sui_config/sui.keystore` (the JSON array).
+  3. Add a repo secret **`SUI_KEYSTORE_JSON`** with that content.  
+  If not set, CI skips publish; the generated app will show a placeholder and you can set `PACKAGE_ADDRESS` manually after publishing.
+
+---
 
 ## Testing
 
-### 1. 測試 Move 合約
+### 1. Test the Move contract
 
 ```bash
 cd move/hello_world
 sui move test
 ```
 
-### 2. 本地跑前端（需先部署合約）
+### 2. Run the frontend locally (after contract is deployed)
 
-**2.1 部署合約到 Testnet**
+**2.1 Publish the contract to testnet** (if CI didn’t do it)
 
 ```bash
 cd move/hello_world
-sui client publish --gas-budget 100000000
+sui client publish
 ```
 
-記下輸出裡的 **Published package ID**（例如 `0x1234...`）。
+Note the **Published package ID** in the output.
 
-**2.2 填寫合約位址**
+**2.2 Set the contract address in the app**
 
-編輯 `src/app/src/App.tsx`，把第 7 行的 `PACKAGE_ADDRESS` 換成你剛部署的 package ID：
+Edit `src/app/src/App.tsx` and set `PACKAGE_ADDRESS` to that package ID (or rely on CI if you used `SUI_KEYSTORE_JSON`).
 
-```ts
-const PACKAGE_ADDRESS = '0x你的_package_id'
-```
-
-**2.3 安裝依賴並啟動**
+**2.3 Install and run the app**
 
 ```bash
-# 根目錄依賴（codegen 用）
 npm install
-
-# 前端依賴與 dev server
 cd src/app && npm install && npm run dev
 ```
 
-瀏覽器打開終端顯示的網址（通常是 http://localhost:5173），連接錢包後即可建立 / 更新 Greeting。
+Open the URL shown (e.g. http://localhost:5173) and connect your wallet.
 
-### 3. 只驗證 TypeScript 綁定（不跑前端）
+### 3. Verify TypeScript bindings only
 
 ```bash
 npm install
-npx sui-ts-codegen generate   # 會讀 move/ 並輸出到 src/generated
-# 檢查 src/generated/ 是否有更新、無編譯錯誤即可
+npx sui-ts-codegen generate
+# Check that src/generated/ is updated and compiles.
 ```
+
+---
 
 ## Future
 
-- OpenClaw integration: chat-based DApp generation
-- Mode 2: Describe your DApp → AI writes Move + Frontend
+- OpenClaw integration: chat-based DApp generation.
+- Mode 2: Describe your DApp → AI writes Move + frontend.
+
+---
+
+[中文說明](README.zh-TW.md)

@@ -46,6 +46,34 @@ jobs:
           echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
           sui --version
 
+      # --- Publish Move 到 Testnet（選用：需設定 SUI_KEYSTORE_JSON secret）---
+      - name: Publish Move package (testnet)
+        id: publish
+        if: ${{ secrets.SUI_KEYSTORE_JSON != '' }}
+        env:
+          SUI_KEYSTORE_JSON: ${{ secrets.SUI_KEYSTORE_JSON }}
+        run: |
+          mkdir -p "$HOME/.sui/sui_config"
+          echo "$SUI_KEYSTORE_JSON" > "$HOME/.sui/sui_config/sui.keystore"
+          sui client new-env --alias testnet --rpc https://fullnode.testnet.sui.io:443 2>/dev/null || true
+          sui client default-env testnet 2>/dev/null || true
+          cd move/hello_world
+          publish_out=$(sui client publish --gas-budget 100000000 2>&1) || { echo "$publish_out"; exit 1; }
+          echo "$publish_out" | tee publish.log
+          PACKAGE_ID=$(grep -iE 'PackageID|package id|Published.*0x' publish.log | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+          if [ -z "$PACKAGE_ID" ]; then
+            PACKAGE_ID=$(grep -oE '0x[a-fA-F0-9]{64}' publish.log | head -1)
+          fi
+          echo "PACKAGE_ID=$PACKAGE_ID" >> $GITHUB_ENV
+          echo "package_id=$PACKAGE_ID" >> $GITHUB_OUTPUT
+          echo "✅ Published package: $PACKAGE_ID"
+
+      - name: Set placeholder PACKAGE_ID when skip publish
+        if: ${{ secrets.SUI_KEYSTORE_JSON == '' }}
+        run: |
+          echo "PACKAGE_ID=" >> $GITHUB_ENV
+          echo "⚠️  SUI_KEYSTORE_JSON not set — skip publish, frontend will use placeholder"
+
       # --- Node.js ---
       - uses: actions/setup-node@v4
         with:
@@ -78,6 +106,7 @@ jobs:
       - name: Generate Frontend with AI
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PACKAGE_ID: ${{ env.PACKAGE_ID }}
         run: |
           node scripts/generate-frontend.mjs
           echo "✅ Frontend generated"

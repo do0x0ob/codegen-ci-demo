@@ -6,5 +6,3 @@ A minimal Sui DApp that lets users:
 3. Update the greeting message
 
 Style: Clean, minimal, dark theme. One-page app.
-
-<!-- trigger ci -->

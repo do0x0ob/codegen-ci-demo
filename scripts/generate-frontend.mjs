@@ -38,6 +38,11 @@ async function main() {
     description = fs.readFileSync(DESCRIPTION_FILE, 'utf-8');
   }
 
+  const packageId = process.env.PACKAGE_ID || '';
+  if (packageId) {
+    console.log('📦 Using published package ID:', packageId);
+  }
+
   // 3. Build prompt
   const bindingsContext = bindingsFiles
     .map(f => `// File: ${f.path}\n${f.content}`)
@@ -59,6 +64,7 @@ ${bindingsContext}
 - Handle loading states and errors
 - Use TypeScript
 - Output files: App.tsx, main.tsx, index.html, vite.config.ts, package.json
+${packageId ? `- In App.tsx set the package address to this exact value: \`const PACKAGE_ADDRESS = '${packageId}';\` (the contract is already deployed to testnet).` : "- In App.tsx use a placeholder: `const PACKAGE_ADDRESS = '0x...';` and add a comment that the user must replace it with their deployed package ID."}
 
 ## Dependencies (use these exact versions in package.json — do not use outdated or non-existent versions)
 Use only versions that exist on npm. Prefer current stable:
@@ -145,6 +151,23 @@ For each file, output:
     fs.writeFileSync(path.join(OUTPUT_DIR, 'ai-output.txt'), responseText);
     console.log('⚠️  Could not parse files, saved raw output to ai-output.txt');
   } else {
+    // 6. If we have PACKAGE_ID, replace placeholder in App.tsx
+    const packageId = process.env.PACKAGE_ID || '';
+    const appPaths = ['src/App.tsx', 'App.tsx'];
+    for (const rel of appPaths) {
+      const appPath = path.join(OUTPUT_DIR, rel);
+      if (packageId && fs.existsSync(appPath)) {
+        let appContent = fs.readFileSync(appPath, 'utf-8');
+        const updated = appContent.replace(
+          /const PACKAGE_ADDRESS\s*=\s*['"]0x[^'"]*['"]\s*;?/,
+          `const PACKAGE_ADDRESS = '${packageId}';`
+        );
+        if (updated !== appContent) {
+          fs.writeFileSync(appPath, updated);
+          console.log(`  ✅ Injected PACKAGE_ADDRESS in ${rel}`);
+        }
+      }
+    }
     console.log(`\n🎉 Generated ${fileCount} files in ${OUTPUT_DIR}`);
   }
 }
