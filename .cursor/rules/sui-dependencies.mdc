@@ -1,0 +1,21 @@
+---
+description: 大前提：Mysten Sui 依賴必須使用最新版（TS SDK、dApp Kit）
+alwaysApply: true
+---
+
+# Sui 依賴版本 — 大前提（不可改動）
+
+本專案**一律**使用最新版本的 Mysten Sui 相關套件。此為專案大前提，scaffold、codegen、範例、文件與任何改動都不得違反。
+
+## 必須遵守
+
+- **TypeScript SDK**：`@mysten/sui` 必須為 **npm 最新版**（目前為 ^2.x）。禁止使用 1.x；1.x 與 dApp Kit 的 `extractStatusFromEffectsBcs`、`parseTransactionBcs`、`parseTransactionEffectsBcs` 等匯出不相容，會導致 build 失敗。
+- **Sui dApp Kit**：`@mysten/dapp-kit-react`、`@mysten/dapp-kit-core` 等必須為 **最新版**，且與 `@mysten/sui` 的 peer dependency 一致。
+
+## 實務要求
+
+- 撰寫或修改 prompt、範例、scaffold、codegen 設定、README、PROJECT_DESCRIPTION 時，一律指定或升級到上述最新版。
+- 若發現 `package.json` 使用舊版（例如 @mysten/sui ^1.x），**必須先**改為最新版再繼續開發或回答。
+- 新增前端或 Node 依賴時，只可加入與最新 @mysten/sui / dApp Kit 相容的版本。
+
+此規則為模板一部分，複製或 fork 本專案時會一併帶入。
