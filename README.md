@@ -50,9 +50,10 @@ CI runs when you push changes to any of: `move/**`, `PROJECT_DESCRIPTION.md`, `s
 |--------|----------|-------------|
 | **TypeScript bindings** | `src/generated/` (and copied to `src/app/src/generated/`) | Type-safe Move call helpers and BCS types from your contract. |
 | **React frontend** | `src/app/` | AI-generated app: `src/App.tsx`, `src/main.tsx`, `index.html`, `vite.config.ts`, `package.json`, etc. Uses the bindings and, if publish ran, the injected package ID. |
-| **Branch** | **`codegen`** | All of the above is committed and pushed only to the `codegen` branch. Check out or pull `codegen` to use the generated app. |
+| **Branch** | **`codegen`** | All of the above is committed and pushed to the **`codegen`** branch. |
+| **Branch** | **`run`** | Same commit as `codegen`, pushed to **`run`**. Use **`run`** to run the app or create a feature branch (e.g. `git checkout run` then `git checkout -b my-feature`) without modifying `codegen`. |
 
-So: **prepare** Move + `PROJECT_DESCRIPTION.md` + config + secrets → **CI runs** the pipeline above → **result** is on the **`codegen`** branch in **`src/generated/`** and **`src/app/`**.
+So: **prepare** Move + `PROJECT_DESCRIPTION.md` + config + secrets → **CI runs** the pipeline above → **result** is on **`codegen`** and **`run`** in **`src/generated/`** and **`src/app/`**.
 
 ---
 

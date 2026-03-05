@@ -50,9 +50,10 @@
 |------|------|------|
 | **TypeScript 綁定** | `src/generated/`（並複製到 `src/app/src/generated/`） | 依合約產生的型別安全 Move 呼叫與 BCS 型別。 |
 | **React 前端** | `src/app/` | AI 產生的應用：`src/App.tsx`、`src/main.tsx`、`index.html`、`vite.config.ts`、`package.json` 等，使用上述綁定；若 CI 有發布，會帶入 package ID。 |
-| **分支** | **`codegen`** | 以上內容只會 commit 並 push 到 **`codegen`** 分支。切換或拉取 `codegen` 即可使用產生的 app。 |
+| **分支** | **`codegen`** | 以上內容會 commit 並 push 到 **`codegen`**。 |
+| **分支** | **`run`** | 與 `codegen` 同一個 commit，另 push 到 **`run`**。要跑 app 或從這裡開新分支改東西時用 **`run`**（例如 `git checkout run` 再 `git checkout -b my-feature`），不要直接改 `codegen`。 |
 
-整理：**準備** Move、`PROJECT_DESCRIPTION.md`、設定與 secrets → **CI 執行**上述流程 → **結果**在 **`codegen`** 分支的 **`src/generated/`** 與 **`src/app/`**。
+整理：**準備** Move、`PROJECT_DESCRIPTION.md`、設定與 secrets → **CI 執行**上述流程 → **結果**在 **`codegen`** 與 **`run`** 的 **`src/generated/`** 與 **`src/app/`**。
 
 ---
 

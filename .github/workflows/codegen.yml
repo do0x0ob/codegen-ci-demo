@@ -46,7 +46,7 @@ jobs:
           echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
           sui --version
 
-      # --- Publish Move 到 Testnet（選用：設定 vars.ENABLE_TESTNET_PUBLISH = 'true' 且 secrets.SUI_KEYSTORE_JSON）---
+      # --- Publish Move to Testnet (optional: set vars.ENABLE_TESTNET_PUBLISH = 'true' and secrets.SUI_KEYSTORE_JSON)---
       - name: Publish Move package (testnet)
         id: publish
         if: ${{ vars.ENABLE_TESTNET_PUBLISH == 'true' }}
@@ -95,7 +95,7 @@ jobs:
           npx sui-ts-codegen generate
           echo "✅ TypeScript bindings generated"
 
-      # --- 把 generated 複製到 app 內，讓前端 ./generated/... 路徑正確 ---
+      # --- Copy generated bindings into app to make frontend ./generated/... path correct ---
       - name: Copy generated bindings into app
         run: |
           mkdir -p src/app/src/generated
@@ -111,7 +111,7 @@ jobs:
           node scripts/generate-frontend.mjs
           echo "✅ Frontend generated"
 
-      # --- Step 4: Commit & Push 到 codegen 分支（不覆蓋主幹）---
+      # --- Step 4: Commit & Push to codegen branch---
       - name: Commit generated files to codegen branch
         run: |
           git config user.name "codegen-bot"
@@ -121,3 +121,9 @@ jobs:
           git diff --staged --quiet || git commit -m "🤖 auto: codegen + frontend generation"
           git push -f origin codegen
           echo "✅ Pushed to branch codegen"
+
+      - name: Create run branch (same content, for checkout & run)
+        run: |
+          git checkout -B run
+          git push -f origin run
+          echo "✅ Pushed to branch run (use this branch to run the app or create feature branches)"
