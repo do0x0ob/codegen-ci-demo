@@ -1,0 +1,61 @@
+name: Move Codegen → Frontend
+
+on:
+  push:
+    paths:
+      - 'move/**'
+      - 'PROJECT_DESCRIPTION.md'
+      - 'sui-codegen.config.ts'
+
+jobs:
+  codegen-and-generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Sui CLI ---
+      - name: Install Sui CLI
+        run: |
+          curl -fsSL https://sui.io/install.sh | bash
+          echo "$HOME/.sui/bin" >> $GITHUB_PATH
+
+      # --- Node.js ---
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      # --- Step 1: Move Summary ---
+      - name: Generate Move Summary
+        run: |
+          cd move/hello_world
+          sui move summary
+          echo "✅ Move summary generated"
+
+      # --- Step 2: Codegen (TS Bindings) ---
+      - name: Run Codegen
+        run: |
+          npx sui-ts-codegen generate
+          echo "✅ TypeScript bindings generated"
+
+      # --- Step 3: AI Frontend Generation ---
+      - name: Generate Frontend with AI
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node scripts/generate-frontend.mjs
+          echo "✅ Frontend generated"
+
+      # --- Step 4: Commit & Push ---
+      - name: Commit generated files
+        run: |
+          git config user.name "codegen-bot"
+          git config user.email "bot@codegen.ci"
+          git add src/
+          git diff --staged --quiet || (git commit -m "🤖 auto: codegen + frontend generation" && git push)
+          echo "✅ Changes committed"
