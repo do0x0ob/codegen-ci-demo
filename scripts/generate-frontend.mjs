@@ -90,9 +90,9 @@ Do NOT use the deprecated \`@mysten/dapp-kit\`. Use the new \`@mysten/dapp-kit-r
 - Include \`<ConnectButton />\`, handle loading and errors
 - Output files: **src/dapp-kit.ts**, **src/App.tsx**, **src/main.tsx**, **index.html**, **vite.config.ts**, **package.json**
 
-## Dependencies (package.json — use these)
-- "@mysten/dapp-kit-react": "^1.0.0" (or latest stable)
-- "@mysten/sui": "^1.0.0"
+## Dependencies (package.json — use these exact versions)
+- "@mysten/dapp-kit-react": "^1.1.0" (or latest; must match @mysten/sui peer)
+- "@mysten/sui": "^2.6.0" (required: 2.x; 1.x is incompatible with dApp Kit and will break the build)
 - "@tanstack/react-query": "^5.0.0"
 - "react": "^18.3.0", "react-dom": "^18.3.0"
 - "vite": "^6.0.0", "@vitejs/plugin-react": "^4.3.0"
