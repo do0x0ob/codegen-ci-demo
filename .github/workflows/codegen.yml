@@ -17,13 +17,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # --- Sui CLI ---
+      # --- Sui CLI (suiup) using cache to avoid re-downloading ---
+      - name: Cache Sui / suiup
+        id: cache-sui
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.HOME }}/.local/bin
+            ${{ env.HOME }}/.local/share
+          key: suiup-${{ runner.os }}-sui-testnet-v1
+          restore-keys: |
+            suiup-${{ runner.os }}-sui-testnet-
+
       - name: Install Sui CLI
+        if: steps.cache-sui.outputs.cache-hit != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -fsSL https://sui.io/install.sh | bash
-          echo "$HOME/.sui/bin" >> $GITHUB_PATH
-          echo "PATH=$HOME/.sui/bin:$PATH" >> $GITHUB_ENV
-          export PATH="$HOME/.sui/bin:$PATH"
+          curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          suiup install sui@testnet -y
+          sui --version
+
+      - name: Set Sui PATH
+        run: |
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "PATH=$HOME/.local/bin:$PATH" >> $GITHUB_ENV
           sui --version
 
       # --- Node.js ---
